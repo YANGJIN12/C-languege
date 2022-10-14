@@ -9,7 +9,7 @@
 #include <stdarg.h>
 
 
-// ÇØ½Ã ¸Ê > ¹è¿­ > ¼Óµµ´Â ÀÏ¹Ý ¹è¿­¿¡ ºñÇØ Á¶±Ý ´À¸±Áö¶óµµ Æò±Õ ¼Óµµ´Â ºñ½ÁÇÏ°Ô º¸Àå
+// í•´ì‹œ ë§µ > ë°°ì—´ > ì†ë„ëŠ” ì¼ë°˜ ë°°ì—´ì— ë¹„í•´ ì¡°ê¸ˆ ëŠë¦´ì§€ë¼ë„ í‰ê·  ì†ë„ëŠ” ë¹„ìŠ·í•˜ê²Œ ë³´ìž¥
 #define CLS(value, function,...) value->function(value,##__VA_ARGS__)
 #define MAINTHREAD INT main() {
 #define MAINTHTEADEND }
@@ -32,6 +32,7 @@ typedef struct HASHMAP HASHMAP;
 typedef HASHMAP* PHASHMAP;
 typedef UINT(*HASHING)(PHASHMAP, PCHAR);
 typedef PDATA(*GETTER)(PHASHMAP, PCHAR);
+typedef UINT(*SIZING)(PHASHMAP);
 
 struct DATA;
 struct HASHMAP;
@@ -56,17 +57,22 @@ struct HASHMAP {
 	UINT size;
 	HASHING hashing;
 	GETTER getter;
+	SIZING getsize;
 };
+
+UINT GetSize (PHASHMAP this){
+	return this->size;
+}
 
 UINT Hashing(PHASHMAP this, PCHAR str) {
 	UINT index = 487;
 	while (*str != '\0') {
 		index = index << 4;
-		index %= this->size;
+		index %= /*this->size*/ CLS(this, getsize);
 		index += *str;
 		++str;
 	}
-	return index % this->size;
+	return index % /*this->size*/ CLS(this, getsize);
 }
 
 PDATA Getter(PHASHMAP this, PCHAR str) {
@@ -74,7 +80,7 @@ PDATA Getter(PHASHMAP this, PCHAR str) {
 	while (this->datas[index].data != 0) {
 		if (strcpy_s(this->datas[index].key, 256, str) == 0) {
 			return this->datas[index].data;
-			index = (index + 1) % this->size;
+			index = (index + 1) % /*this->size*/ CLS(this, getsize);
 		}
 
 	}
@@ -94,11 +100,12 @@ PHASHMAP CreateHashMap(UINT size) {
 	hash->size = size;
 	hash->hashing = Hashing;
 	hash->getter = Getter;
+	hash->getsize = GetSize;
 	return hash;
 }
 
 void RemoveHashMap(PHASHMAP hash) {
-	for (int i = 0; i < hash->size; ++i) {
+	for (int i = 0; i < CLS(hash->size); ++i) {
 		if(hash->datas[i].data != 0)
 			free(hash->datas[i].data);
 	}
@@ -110,26 +117,38 @@ void RemoveHashMap(PHASHMAP hash) {
 MAINTHREAD
 	PHASHMAP hash = CreateHashMap(70);
 	INT select;
-	STR temp;
-
+	//STR temp;
+	STR list[10][2] = {
+		{"ABCD", "DEFG"},
+		{"ABCD", "DEFG"},
+		{"ABCD", "DEFG"},
+		{"ABCD", "DEFG"},       
+		{"ABCD", "DEFG"},
+		{"ABCD", "DEFG"},       
+		{"ABCD", "DEFG"},
+		
+	};
+	for(UINT i = 0; i < 10; ++i){
+		strcpy_s(CLS(hash,getter, list[i][0])->descript, 256, list[i][1]);
+	}
 	INFINITEWHILE
 
-		/*printf("1.´Ü¾î Ãß°¡ 2. ¹ø¿ª 3. Á¾·á >>>");
+		/*printf("1.ë‹¨ì–´ ì¶”ê°€ 2. ë²ˆì—­ 3. ì¢…ë£Œ >>>");
 		scanf_s("%d", &select);
 		if (select == 3) break;
 		else if (select == 1) {
-			printf("¼öÁ¤ÇÒ ´Ü¾î >>");
+			printf("ìˆ˜ì •í•  ë‹¨ì–´ >>");
 			scanf_s("%s", temp, 256);
-			printf("¼öÁ¤ÇÒ ¹ø¿ª >>");
+			printf("ìˆ˜ì •í•  ë²ˆì—­ >>");
 			scanf_s("%s", CLS(hash, getter, temp)->descript, 256);
 		}*/
-		printf("1.¹ø¿ª 2. Á¾·á >>>");
+		printf("1.ë²ˆì—­ 2. ì¢…ë£Œ >>>");
 		scanf_s("%d", &select);
 		if (select == 2) break;
-		else if (select == 2) {
-			printf("¹ø¿ªÇÒ ´Ü¾î >>");
+		else if (select == 1) {
+			printf("ë²ˆì—­í•  ë‹¨ì–´ >>");
 			scanf_s("%s", temp, 256);
-			printf("¹ø¿ªÇÑ ´Ü¾î >> %s\n", CLS(hash, getter, temp)->descript);
+			printf("ë²ˆì—­í•œ ë‹¨ì–´ >> %s\n", CLS(hash, getter, temp)->descript);
 		}
 
 	INFINITEWHILEEND
@@ -139,3 +158,6 @@ MAINTHREAD
 	
 
 MAINTHTEADEND
+
+
+}
